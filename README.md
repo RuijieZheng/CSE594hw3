@@ -1,16 +1,76 @@
-# CSE594hw3
+# CSE594 Assignment 3 Submission Package
 
-## Render Deploy Notes
+This repository contains a complete, runnable package for Assignment 3 with:
+- Baseline interface (without AI assistance)
+- AI-assisted interface
+- Backend logging in SQLite
+- Data export endpoint
+- Statistical analysis pipeline
+- Submission final markdown
 
-This repository contains the app under `a3_submission/`.
+## Quick Start
 
-If you deploy with Render Web Service (manual settings), use either of these options:
+## 1) Setup
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-1. Preferred:
-- Root Directory: `a3_submission`
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
+## 2) Configure environment variables
+```powershell
+$env:FLASK_SECRET_KEY="replace_with_random_secret"
+$env:ADMIN_TOKEN="replace_with_secure_admin_token"
+$env:TRIALS_PER_PARTICIPANT="6"
+```
 
-2. Root-level fallback (if Root Directory is left empty):
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn render_wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
+## 3) Run app
+```powershell
+python app/app.py
+```
+
+Open `http://127.0.0.1:5000`
+
+This project is a web app (browser-based), not a desktop executable.
+
+## 3.1) Where to see running results
+- Study interface: `http://127.0.0.1:5000`
+- Start form page: `http://127.0.0.1:5000/start`
+- Completion page appears after all trials are submitted
+- Data export result (JSON): `http://127.0.0.1:5000/admin/export?token=YOUR_ADMIN_TOKEN`
+
+## 4) Two conditions for MTurk deployment
+- Baseline (without AI): select `Without AI (Baseline)` in start form
+- AI-assisted: select `With AI Assistance` in start form
+
+You can also host two separate links by pre-filling condition query in your MTurk setup instructions.
+
+## 5) Replace study data from Assignment 2
+Update `data/trials.csv` with your own trials.
+Required columns:
+- trial_id
+- prompt
+- gold_answer
+- ai_suggestion
+- difficulty (optional)
+
+## 6) Export data after collection
+Call endpoint in browser:
+
+`http://127.0.0.1:5000/admin/export?token=YOUR_ADMIN_TOKEN`
+
+This generates `data/responses_export.csv`.
+
+## 7) Run analysis for A3-2
+```powershell
+python analysis/analyze.py --input data/responses_export.csv --outdir analysis/analysis_output
+```
+
+## Submission Files
+See `submission_materials/` for:
+- Final submission markdown: `submission_materials/FINAL_SUBMISSION.md`
+
+## Notes for Grading
+- Backend stores participant/session/trial records.
+- Each participant gets sampled trials (not all get identical trial sets).
+- Includes confidence and reaction-time logs as additional measurements.

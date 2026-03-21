@@ -1,8 +1,7 @@
 services:
   - type: web
-    name: cse594hw3
+    name: cse594-a3-study
     env: python
-    rootDir: a3_submission
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     envVars:

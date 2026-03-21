@@ -11,6 +11,8 @@ a3_submission/.venv/
 *.log
 *.sqlite
 *.db
+cloudflared.exe
+ca-bundle.pem
 
 a3_submission/data/study.db
 a3_submission/data/responses_export.csv

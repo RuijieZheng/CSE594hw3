@@ -98,6 +98,25 @@ select {
   padding: 10px;
 }
 
+.condition-banner {
+  border-radius: 8px;
+  border: 1px solid #c7d4e5;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.condition-banner.baseline {
+  background: #edf7ff;
+  color: #2f5596;
+}
+
+.condition-banner.with-ai {
+  background: #f7ffed;
+  color: #3f7a28;
+  border-color: #d2e9c7;
+}
+
 .survey-code {
   font-size: 24px;
   font-weight: 800;

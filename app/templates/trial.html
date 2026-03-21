@@ -3,6 +3,14 @@
 <section class="card">
   <h1>Trial {{ trial_number }} / {{ total_trials }}</h1>
 
+  <section class="condition-banner {% if condition == 'with_ai' %}with-ai{% else %}baseline{% endif %}">
+    {% if condition == 'with_ai' %}
+      <strong>AI-Assisted Condition</strong> — AI suggestions are shown below to help your decision.
+    {% else %}
+      <strong>Baseline Condition</strong> — No AI assistance is displayed on this page.
+    {% endif %}
+  </section>
+
   <p class="prompt-label">Task Prompt</p>
   <p class="prompt-text">{{ trial_obj.prompt }}</p>
 

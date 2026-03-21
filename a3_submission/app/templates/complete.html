@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Study Complete</h1>
+  <p>Participant ID: <strong>{{ participant_id }}</strong></p>
+  <p>Your survey code for MTurk submission:</p>
+  <p class="survey-code">{{ survey_code }}</p>
+
+  {% if submit_url %}
+    <p><a class="button" href="{{ submit_url }}">Submit to MTurk</a></p>
+  {% endif %}
+
+  <p>Thank you for participating.</p>
+</section>
+{% endblock %}

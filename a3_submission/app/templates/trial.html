@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Trial {{ trial_number }} / {{ total_trials }}</h1>
+
+  <p class="prompt-label">Task Prompt</p>
+  <p class="prompt-text">{{ trial_obj.prompt }}</p>
+
+  <section class="ai-box" style="background:#f6f8fa; border-color:#d8dde5;">
+    <p class="prompt-label">Severity Label Definitions</p>
+    <p><strong>Low</strong>: mild symptoms, minimal functional impact.</p>
+    <p><strong>Moderate</strong>: notable symptoms affecting daily functioning.</p>
+    <p><strong>High</strong>: significant impairment and urgent professional support needed.</p>
+    <p><strong>Crisis</strong>: immediate safety concern requiring emergency support.</p>
+  </section>
+
+  {% if condition == 'with_ai' %}
+    <section class="ai-box">
+      <p class="prompt-label">AI Suggestion</p>
+      <p>{{ trial_obj.ai_suggestion }}</p>
+    </section>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('submit_trial') }}" class="form-grid">
+    <label for="response_text">Your Severity Classification</label>
+    <select id="response_text" name="response_text" required>
+      <option value="Low">Low</option>
+      <option value="Moderate">Moderate</option>
+      <option value="High">High</option>
+      <option value="Crisis">Crisis</option>
+    </select>
+
+    <label for="confidence">Confidence (1=low, 5=high)</label>
+    <select id="confidence" name="confidence" required>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+
+    <button class="button" type="submit">Submit Trial</button>
+  </form>
+</section>
+{% endblock %}

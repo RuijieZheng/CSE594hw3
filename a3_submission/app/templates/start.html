@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Start Session</h1>
+  <p>Fill this form before beginning.</p>
+  <p>
+    Quick links:
+    <a href="{{ url_for('start_baseline_link') }}">Without AI</a>
+    |
+    <a href="{{ url_for('start_with_ai_link') }}">With AI</a>
+  </p>
+  <form method="post" action="{{ url_for('start') }}" class="form-grid">
+    <label for="worker_id">Worker ID (or participant name)</label>
+    <input id="worker_id" name="worker_id" type="text" required>
+
+    <label for="assignment_id">Assignment ID</label>
+    <input id="assignment_id" name="assignment_id" type="text" value="sandbox_assignment" required>
+
+    <label for="order_label">Order Label (e.g., AI-first or baseline-first)</label>
+    <input id="order_label" name="order_label" type="text" value="unknown" required>
+
+    <label for="condition">Condition</label>
+    <select id="condition" name="condition" required>
+      <option value="baseline" {% if preselected_condition == 'baseline' %}selected{% endif %}>Without AI (Baseline)</option>
+      <option value="with_ai" {% if preselected_condition == 'with_ai' %}selected{% endif %}>With AI Assistance</option>
+    </select>
+
+    <button class="button" type="submit">Begin Trials</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+a3_submission/.venv/
+
+# Runtime artifacts
+*.log
+*.sqlite
+*.db
+
+a3_submission/data/study.db
+a3_submission/data/responses_export.csv
+
+# Analysis artifacts (generated)
+a3_submission/analysis/analysis_output/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/

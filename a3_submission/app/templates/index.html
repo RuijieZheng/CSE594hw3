@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Human-AI Task Study</h1>
+  <p>This interface supports both study conditions.</p>
+  <div class="button-row">
+    <a class="button" href="{{ url_for('start') }}">Start Study</a>
+  </div>
+</section>
+{% endblock %}

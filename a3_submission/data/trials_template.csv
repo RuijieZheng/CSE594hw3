@@ -1,0 +1,2 @@
+trial_id,prompt,gold_answer,ai_suggestion,difficulty
+EXAMPLE_001,"Replace with your task trial prompt",correct_label,ai_output_here,easy

@@ -45,6 +45,21 @@ This project is a web app (browser-based), not a desktop executable.
 
 You can also host two separate links by pre-filling condition query in your MTurk setup instructions.
 
+### Recommended MTurk External Survey setup (best practice)
+Use dedicated URLs so each HIT is pinned to one condition and MTurk parameters are preserved:
+
+- Baseline URL: `https://YOUR-APP-DOMAIN/mturk/baseline`
+- With-AI URL: `https://YOUR-APP-DOMAIN/mturk/with_ai`
+
+How this works:
+- MTurk provides `workerId`, `assignmentId`, `hitId`, and `turkSubmitTo` in query params.
+- Your web app runs the study flow and logs responses.
+- Completion page submits back to MTurk using external submit with `assignmentId` + `surveyCode`.
+
+Important testing note:
+- In preview mode, MTurk uses `ASSIGNMENT_ID_NOT_AVAILABLE`; this will not show final MTurk submit button.
+- Always test the full submit flow after clicking **Accept HIT** in Worker Sandbox.
+
 ## 5) Replace study data from Assignment 2
 Update `data/trials.csv` with your own trials.
 Required columns:

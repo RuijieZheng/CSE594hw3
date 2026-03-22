@@ -2,12 +2,27 @@
 {% block content %}
 <section class="card">
   <h1>Study Complete</h1>
+  <section class="condition-banner {% if condition == 'with_ai' %}with-ai{% else %}baseline{% endif %}">
+    {% if condition == 'with_ai' %}
+      <strong>Completed: With AI Assistance Condition</strong>
+    {% else %}
+      <strong>Completed: Baseline (Without AI) Condition</strong>
+    {% endif %}
+  </section>
   <p>Participant ID: <strong>{{ participant_id }}</strong></p>
   <p>Your survey code for MTurk submission:</p>
   <p class="survey-code">{{ survey_code }}</p>
 
-  {% if submit_url %}
-    <p><a class="button" href="{{ submit_url }}">Submit to MTurk</a></p>
+  {% if submit_action %}
+    <form method="post" action="{{ submit_action }}">
+      <input type="hidden" name="assignmentId" value="{{ assignment_id }}">
+      <input type="hidden" name="surveyCode" value="{{ survey_code }}">
+      <button class="button" type="submit">Submit to MTurk</button>
+    </form>
+  {% elif is_preview_assignment %}
+    <p class="muted">This run used preview/local assignment ID. In real Worker Sandbox acceptance mode, this page will show a "Submit to MTurk" button automatically.</p>
+  {% else %}
+    <p class="muted">MTurk submit endpoint not detected. If this was opened outside Worker Sandbox, copy the survey code into your HIT answer box.</p>
   {% endif %}
 
   <p>Thank you for participating.</p>

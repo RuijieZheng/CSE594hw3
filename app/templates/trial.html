@@ -1,13 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="card">
-  <h1>Trial {{ trial_number }} / {{ total_trials }}</h1>
+<section class="card study-card {% if condition == 'with_ai' %}theme-ai{% else %}theme-baseline{% endif %}">
+  <div class="study-headline">
+    <p class="eyebrow">Human-AI Mental Health Triage Study</p>
+    <h1>
+      {% if condition == 'with_ai' %}
+        With AI Assistance
+      {% else %}
+        Baseline (Without AI)
+      {% endif %}
+    </h1>
+    <p class="trial-counter">Trial {{ trial_number }} of {{ total_trials }}</p>
+  </div>
 
   <section class="condition-banner {% if condition == 'with_ai' %}with-ai{% else %}baseline{% endif %}">
     {% if condition == 'with_ai' %}
-      <strong>AI-Assisted Condition</strong> — AI suggestions are shown below to help your decision.
+      <strong>AI-Assisted Condition:</strong> AI suggestions are shown below and may inform your decision.
     {% else %}
-      <strong>Baseline Condition</strong> — No AI assistance is displayed on this page.
+      <strong>Baseline Condition:</strong> No AI suggestions are displayed for this condition.
     {% endif %}
   </section>
 

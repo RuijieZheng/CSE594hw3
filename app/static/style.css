@@ -37,6 +37,11 @@ body {
   padding: 0 16px 24px;
 }
 
+.muted {
+  color: #607080;
+  font-size: 14px;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -86,8 +91,9 @@ select {
 .prompt-text {
   background: #f9fbff;
   border-left: 4px solid var(--accent-2);
-  border-radius: 6px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 14px;
+  line-height: 1.5;
 }
 
 .ai-box {
@@ -117,9 +123,62 @@ select {
   border-color: #d2e9c7;
 }
 
+.study-card {
+  overflow: hidden;
+}
+
+.study-headline {
+  margin: -22px -22px 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.study-headline h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.trial-counter {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.theme-baseline .study-headline {
+  background: linear-gradient(120deg, #edf4ff, #f6fbff);
+}
+
+.theme-baseline .eyebrow,
+.theme-baseline .trial-counter {
+  color: #2d5f93;
+}
+
+.theme-ai .study-headline {
+  background: linear-gradient(120deg, #f0ffe7, #f7fff0);
+}
+
+.theme-ai .eyebrow,
+.theme-ai .trial-counter {
+  color: #3a7d2b;
+}
+
 .survey-code {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 1px;
   color: var(--accent-2);
+}
+
+@media (max-width: 640px) {
+  .study-headline h1 {
+    font-size: 24px;
+  }
 }

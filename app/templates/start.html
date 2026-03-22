@@ -3,18 +3,25 @@
 <section class="card">
   <h1>Start Session</h1>
   <p>Fill this form before beginning.</p>
+  <p class="muted">Condition and MTurk details are prefilled when launched from Worker Sandbox.</p>
+  {% if preview_mode %}
+    <p class="muted"><strong>Preview mode detected:</strong> accept the HIT first in MTurk Worker Sandbox before running the full study and submission flow.</p>
+  {% endif %}
   <p>
     Quick links:
-    <a href="{{ url_for('start_baseline_link') }}">Without AI</a>
+    <a href="{{ url_for('start_baseline_link', workerId=prefill_worker_id, assignmentId=prefill_assignment_id, turkSubmitTo=prefill_turk_submit_to, hitId=prefill_hit_id) }}">Without AI</a>
     |
-    <a href="{{ url_for('start_with_ai_link') }}">With AI</a>
+    <a href="{{ url_for('start_with_ai_link', workerId=prefill_worker_id, assignmentId=prefill_assignment_id, turkSubmitTo=prefill_turk_submit_to, hitId=prefill_hit_id) }}">With AI</a>
   </p>
   <form method="post" action="{{ url_for('start') }}" class="form-grid">
     <label for="worker_id">Worker ID (or participant name)</label>
-    <input id="worker_id" name="worker_id" type="text" required>
+    <input id="worker_id" name="worker_id" type="text" value="{{ prefill_worker_id }}" required>
 
     <label for="assignment_id">Assignment ID</label>
-    <input id="assignment_id" name="assignment_id" type="text" value="sandbox_assignment" required>
+    <input id="assignment_id" name="assignment_id" type="text" value="{{ prefill_assignment_id }}" required>
+
+    <input id="turk_submit_to" name="turk_submit_to" type="hidden" value="{{ prefill_turk_submit_to }}">
+    <input id="hit_id" name="hit_id" type="hidden" value="{{ prefill_hit_id }}">
 
     <label for="order_label">Order Label (e.g., AI-first or baseline-first)</label>
     <input id="order_label" name="order_label" type="text" value="unknown" required>

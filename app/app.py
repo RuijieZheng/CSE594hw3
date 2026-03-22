@@ -202,13 +202,39 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/mturk/<condition>", methods=["GET"])
+def mturk_entry(condition: str):
+    """MTurk external entrypoint that preserves worker/query params and pins condition."""
+    try:
+        normalized = sanitize_condition(condition)
+    except ValueError:
+        abort(400, "Invalid condition")
+
+    params = request.args.to_dict(flat=True)
+    params["condition"] = normalized
+    return redirect(url_for("start", **params))
+
+
 @app.route("/start", methods=["GET", "POST"])
 def start():
     if request.method == "GET":
         preselected = (request.args.get("condition") or "baseline").strip().lower()
         if preselected not in {"baseline", "with_ai"}:
             preselected = "baseline"
-        return render_template("start.html", preselected_condition=preselected)
+        prefill_worker_id = (request.args.get("workerId") or "").strip()
+        prefill_assignment_id = (request.args.get("assignmentId") or "sandbox_assignment").strip()
+        prefill_turk_submit_to = (request.args.get("turkSubmitTo") or "").strip()
+        prefill_hit_id = (request.args.get("hitId") or "").strip()
+        preview_mode = (prefill_assignment_id == "ASSIGNMENT_ID_NOT_AVAILABLE")
+        return render_template(
+            "start.html",
+            preselected_condition=preselected,
+            prefill_worker_id=prefill_worker_id,
+            prefill_assignment_id=prefill_assignment_id,
+            prefill_turk_submit_to=prefill_turk_submit_to,
+            prefill_hit_id=prefill_hit_id,
+            preview_mode=preview_mode,
+        )
 
     try:
         condition = sanitize_condition(request.form.get("condition", ""))
@@ -218,6 +244,8 @@ def start():
     worker_id = (request.form.get("worker_id") or "anonymous_worker").strip()
     assignment_id = (request.form.get("assignment_id") or "sandbox_assignment").strip()
     order_label = (request.form.get("order_label") or "unknown").strip()
+    mturk_submit_to = (request.form.get("turk_submit_to") or "").strip()
+    hit_id = (request.form.get("hit_id") or "").strip()
 
     participant_id = f"P-{uuid.uuid4().hex[:10]}"
 
@@ -237,21 +265,27 @@ def start():
     session["start_epoch"] = time.time()
     session["trial_start_epoch"] = time.time()
     session["survey_code"] = create_survey_code()
+    session["mturk_submit_to"] = mturk_submit_to
+    session["hit_id"] = hit_id
 
     insert_participant(participant_id, worker_id, assignment_id, condition, n, order_label)
-    log_event(participant_id, "session_started", f"condition={condition}")
+    log_event(participant_id, "session_started", f"condition={condition};hit_id={hit_id}")
 
     return redirect(url_for("trial"))
 
 
 @app.route("/start/baseline", methods=["GET"])
 def start_baseline_link():
-    return redirect(url_for("start", condition="baseline"))
+    params = request.args.to_dict(flat=True)
+    params["condition"] = "baseline"
+    return redirect(url_for("start", **params))
 
 
 @app.route("/start/with_ai", methods=["GET"])
 def start_with_ai_link():
-    return redirect(url_for("start", condition="with_ai"))
+    params = request.args.to_dict(flat=True)
+    params["condition"] = "with_ai"
+    return redirect(url_for("start", **params))
 
 
 @app.route("/trial", methods=["GET"])
@@ -281,6 +315,7 @@ def trial():
         trial_obj=trial_obj,
         trial_number=(trial_cursor + 1),
         total_trials=n_trials,
+        title=("With AI Condition" if condition == "with_ai" else "Baseline Condition"),
     )
 
 
@@ -361,17 +396,22 @@ def complete():
 
     survey_code = session.get("survey_code", "")
     assignment_id = session.get("assignment_id", "sandbox_assignment")
-    mturk_submit_to = request.args.get("turkSubmitTo", "")
+    mturk_submit_to = (session.get("mturk_submit_to") or request.args.get("turkSubmitTo", "")).strip()
+    is_preview_assignment = assignment_id in {"", "sandbox_assignment", "ASSIGNMENT_ID_NOT_AVAILABLE"}
 
-    submit_url = ""
-    if mturk_submit_to:
-        submit_url = f"{mturk_submit_to}/mturk/externalSubmit?assignmentId={assignment_id}&surveyCode={survey_code}"
+    submit_action = ""
+    if mturk_submit_to and not is_preview_assignment:
+        submit_action = f"{mturk_submit_to.rstrip('/')}/mturk/externalSubmit"
 
     return render_template(
         "complete.html",
         participant_id=participant_id,
         survey_code=survey_code,
-        submit_url=submit_url,
+        assignment_id=assignment_id,
+        submit_action=submit_action,
+        is_preview_assignment=is_preview_assignment,
+        condition=session.get("condition", "baseline"),
+        title="Study Complete",
     )
 
 

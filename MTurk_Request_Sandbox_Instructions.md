@@ -57,8 +57,8 @@ Repository is already prepared for Render with:
 Use the following HTML as the **External Question** in the MTurk task setup.
 
 Replace `YOUR_PUBLIC_URL` with the public URL of your deployed task. For example:
-- baseline:  `https://your-app.onrender.com/mturk/baseline`
-- with AI:  `https://your-app.onrender.com/mturk/with_ai`
+- baseline:  `https://your-app.onrender.com/mturk/baseline?workerId=${workerId}&assignmentId=${assignmentId}&hitId=${hitId}&turkSubmitTo=${turkSubmitTo}`
+- with AI:  `https://your-app.onrender.com/mturk/with_ai?workerId=${workerId}&assignmentId=${assignmentId}&hitId=${hitId}&turkSubmitTo=${turkSubmitTo}`
 
 ```html
 <html>
@@ -78,8 +78,8 @@ Replace `YOUR_PUBLIC_URL` with the public URL of your deployed task. For example
     <div class="box">
       <p><strong>Step 1:</strong> Choose the correct link below and complete all trials.</p>
       <p>
-        <a class="button" href="YOUR_PUBLIC_URL/mturk/baseline" target="_blank">Without AI (Baseline)</a>
-        <a class="button" href="YOUR_PUBLIC_URL/mturk/with_ai" target="_blank">With AI Assistance</a>
+        <a class="button" href="YOUR_PUBLIC_URL/mturk/baseline?workerId=${workerId}&assignmentId=${assignmentId}&hitId=${hitId}&turkSubmitTo=${turkSubmitTo}" target="_blank">Without AI (Baseline)</a>
+        <a class="button" href="YOUR_PUBLIC_URL/mturk/with_ai?workerId=${workerId}&assignmentId=${assignmentId}&hitId=${hitId}&turkSubmitTo=${turkSubmitTo}" target="_blank">With AI Assistance</a>
       </p>
       <p class="warning">IMPORTANT:</p>
       <ul>
@@ -135,9 +135,13 @@ Replace `YOUR_PUBLIC_URL` with the public URL of your deployed task. For example
 1. Create a HIT using the **External Question** type.
 2. Paste the HTML from section 3 into the HIT’s HTML content.
 3. Enter the reward, duration, and lifespan settings.
-4. Publish the HIT (in Sandbox, so it doesn’t cost real money).
-5. Use another account as a worker (Worker Sandbox) to verify it opens and works.
-6. Record the survey codes produced and confirm they appear in your backend export.
+4. If you use the built-in Survey Link project template, upload the provided one-column CSV:
+  - `data/mturk_baseline_batch.csv` for baseline
+  - `data/mturk_with_ai_batch.csv` for with-AI
+  Each row is one assignment row and already includes MTurk query parameters.
+5. Publish the HIT (in Sandbox, so it doesn’t cost real money).
+6. Use another account as a worker (Worker Sandbox) to verify it opens and works.
+7. Record the survey codes produced and confirm they appear in your backend export.
 
 ---
 

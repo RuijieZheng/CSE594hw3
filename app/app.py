@@ -3,19 +3,20 @@ import hashlib
 import os
 import random
 import sqlite3
-import string
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-DB_PATH = DATA_DIR / "study.db"
-TRIAL_CSV = DATA_DIR / "trials.csv"
+REPO_DATA_DIR = ROOT / "data"
+RUNTIME_DATA_DIR = Path(os.environ.get("RUNTIME_DATA_DIR", str(REPO_DATA_DIR)))
+DB_PATH = Path(os.environ.get("DB_PATH", str(RUNTIME_DATA_DIR / "study.db")))
+EXPORT_CSV_PATH = Path(os.environ.get("EXPORT_CSV_PATH", str(RUNTIME_DATA_DIR / "responses_export.csv")))
+TRIAL_CSV = Path(os.environ.get("TRIALS_CSV_PATH", str(REPO_DATA_DIR / "trials.csv")))
 
 DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
@@ -54,7 +55,8 @@ def get_db_conn() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    EXPORT_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db_conn()
     cur = conn.cursor()
     cur.execute(
@@ -168,9 +170,12 @@ def normalize_mturk_value(value: str, default: str = "") -> str:
     return cleaned or default
 
 
-def create_survey_code(length: int = 10) -> str:
-    chars = string.ascii_uppercase + string.digits
-    return "".join(random.choice(chars) for _ in range(length))
+def create_survey_code(worker_id: str, assignment_id: str, condition: str, participant_id: str) -> str:
+    condition_tag = "AI" if condition == "with_ai" else "BL"
+    base = f"{worker_id}|{assignment_id}|{condition}|{participant_id}"
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest().upper()
+    # Prefix+hash keeps code readable while binding it to MTurk metadata.
+    return f"{condition_tag}-{digest[:10]}"
 
 
 def insert_participant(
@@ -240,7 +245,7 @@ def save_response(payload: dict) -> None:
 
 
 def export_responses_csv() -> tuple[Path, int]:
-    out_csv = DATA_DIR / "responses_export.csv"
+    out_csv = EXPORT_CSV_PATH
     conn = get_db_conn()
     rows = conn.execute(
         """
@@ -361,7 +366,7 @@ def start():
     session["trial_cursor"] = 0
     session["start_epoch"] = time.time()
     session["trial_start_epoch"] = time.time()
-    survey_code = create_survey_code()
+    survey_code = create_survey_code(worker_id, assignment_id, condition, participant_id)
     session["survey_code"] = survey_code
     session["mturk_submit_to"] = mturk_submit_to
     session["hit_id"] = hit_id
@@ -530,6 +535,16 @@ def admin_export():
         "rows": n_rows,
         "display_timezone": DISPLAY_TIMEZONE,
     }
+
+
+@app.route("/admin/export.csv")
+def admin_export_csv():
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        abort(403)
+
+    out_csv, _ = export_responses_csv()
+    return send_file(out_csv, mimetype="text/csv", as_attachment=True, download_name="responses_export.csv")
 
 
 @app.route("/admin/verify_code")

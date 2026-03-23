@@ -1,106 +1,64 @@
-# CSE594 Assignment 3 Submission Package
+# CSE594 作业 3 说明（中文）
 
-This repository contains a complete, runnable package for Assignment 3 with:
-- Baseline interface (without AI assistance)
-- AI-assisted interface
-- Backend logging in SQLite
-- Data export endpoint
-- Statistical analysis pipeline
-- Submission final markdown
+本项目实现了两种实验条件：
+- Baseline（无 AI 建议）
+- With AI（有 AI 建议）
 
-## Quick Start
+后端使用 SQLite 记录参与者与 trial 结果，并可导出 CSV 供统计分析。
 
-## 1) Setup
+## 1) 本地运行
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-## 2) Configure environment variables
+设置环境变量：
 ```powershell
 $env:FLASK_SECRET_KEY="replace_with_random_secret"
 $env:ADMIN_TOKEN="replace_with_secure_admin_token"
 $env:TRIALS_PER_PARTICIPANT="6"
+$env:RUNTIME_DATA_DIR="data"
 ```
 
-## 3) Run app
+启动：
 ```powershell
 python app/app.py
 ```
 
-Open `http://127.0.0.1:5000`
+访问：
+- 首页：`http://127.0.0.1:5000`
+- 开始页：`http://127.0.0.1:5000/start`
 
-This project is a web app (browser-based), not a desktop executable.
+## 2) MTurk 入口链接
+- Baseline：`https://YOUR-APP-DOMAIN/mturk/baseline`
+- With AI：`https://YOUR-APP-DOMAIN/mturk/with_ai`
 
-## 3.1) Where to see running results
-- Study interface: `http://127.0.0.1:5000`
-- Start form page: `http://127.0.0.1:5000/start`
-- Completion page appears after all trials are submitted
-- Data export result (JSON): `http://127.0.0.1:5000/admin/export?token=YOUR_ADMIN_TOKEN`
+说明：
+- MTurk 会自动带上 `workerId`、`assignmentId`、`hitId`、`turkSubmitTo`。
+- 系统会生成有含义的 survey code（带条件前缀 + 哈希片段），可用于回查。
+- Worker 在 MTurk 页面手动粘贴 survey code 提交即可。
 
-## 4) Two conditions for MTurk deployment
-- Baseline (without AI): select `Without AI (Baseline)` in start form
-- AI-assisted: select `With AI Assistance` in start form
-
-You can also host two separate links by pre-filling condition query in your MTurk setup instructions.
-
-### Recommended MTurk External Survey setup (best practice)
-Use dedicated URLs so each HIT is pinned to one condition and MTurk parameters are preserved:
-
-- Baseline URL: `https://YOUR-APP-DOMAIN/mturk/baseline`
-- With-AI URL: `https://YOUR-APP-DOMAIN/mturk/with_ai`
-
-How this works:
-- MTurk provides `workerId`, `assignmentId`, `hitId`, and `turkSubmitTo` in query params.
-- Your web app runs the study flow and logs responses.
-- Completion page submits back to MTurk using external submit with `assignmentId` + `surveyCode`.
-
-Important testing note:
-- In preview mode, MTurk uses `ASSIGNMENT_ID_NOT_AVAILABLE`; this will not show final MTurk submit button.
-- Always test the full submit flow after clicking **Accept HIT** in Worker Sandbox.
-
-## 5) Replace study data from Assignment 2
-Update `data/trials.csv` with your own trials.
-Required columns:
-- trial_id
-- prompt
-- gold_answer
-- ai_suggestion
-- difficulty (optional)
-
-## 6) Export data after collection
-Call endpoint in browser:
-
+## 3) 数据导出
+导出状态（JSON）：
 `http://127.0.0.1:5000/admin/export?token=YOUR_ADMIN_TOKEN`
 
-This generates `data/responses_export.csv`.
+直接下载 CSV：
+`http://127.0.0.1:5000/admin/export.csv?token=YOUR_ADMIN_TOKEN`
 
-Notes:
-- `responses_export.csv` now includes both UTC and localized timestamp columns:
-	- `submitted_at` / `submitted_at_local`
-	- `started_at` / `started_at_local`
-	- `completed_at` / `completed_at_local`
-- Local timezone is controlled by env var `DISPLAY_TIMEZONE` (default `UTC`, e.g., set to `America/Los_Angeles` or `Asia/Shanghai`).
-- Export is refreshed automatically after each write by default (`AUTO_EXPORT_ON_WRITE=1`).
-
-### Verify manual survey codes
-Because MTurk manual-answer flow does not validate arbitrary codes automatically, verify codes server-side:
-
+校验 survey code：
 `http://127.0.0.1:5000/admin/verify_code?token=YOUR_ADMIN_TOKEN&survey_code=CODE_FROM_MTURK`
 
-Returns whether the code exists and links to a recorded participant/session.
+## 4) Render 部署注意事项
+- 本仓库 `render.yaml` 已配置 `RUNTIME_DATA_DIR=/var/data`。
+- 运行时数据（`study.db` 与 `responses_export.csv`）写入 Render 挂载磁盘。
+- `data/trials.csv` 作为只读题库保留在仓库中。
+- 线上完成的 MTurk 数据应从线上导出接口获取，不会自动写回你本地电脑文件。
 
-## 7) Run analysis for A3-2
+## 5) 分析脚本
 ```powershell
 python analysis/analyze.py --input data/responses_export.csv --outdir analysis/analysis_output
 ```
 
-## Submission Files
-See `submission_materials/` for:
-- Final submission markdown: `submission_materials/FINAL_SUBMISSION.md`
-
-## Notes for Grading
-- Backend stores participant/session/trial records.
-- Each participant gets sampled trials (not all get identical trial sets).
-- Includes confidence and reaction-time logs as additional measurements.
+## 6) 提交文件
+- 最终提交说明：`submission_materials/FINAL_SUBMISSION.md`

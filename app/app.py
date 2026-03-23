@@ -141,6 +141,14 @@ def sanitize_condition(condition: str) -> str:
     raise ValueError("Invalid condition")
 
 
+def normalize_mturk_value(value: str, default: str = "") -> str:
+    cleaned = (value or "").strip()
+    # MTurk CSV placeholders can arrive literally (e.g., ${workerId}); treat them as missing.
+    if cleaned.startswith("${") and cleaned.endswith("}"):
+        return default
+    return cleaned or default
+
+
 def create_survey_code(length: int = 10) -> str:
     chars = string.ascii_uppercase + string.digits
     return "".join(random.choice(chars) for _ in range(length))
@@ -234,10 +242,10 @@ def start():
         preselected = (request.args.get("condition") or "baseline").strip().lower()
         if preselected not in {"baseline", "with_ai"}:
             preselected = "baseline"
-        prefill_worker_id = (request.args.get("workerId") or "").strip()
-        prefill_assignment_id = (request.args.get("assignmentId") or "sandbox_assignment").strip()
-        prefill_turk_submit_to = (request.args.get("turkSubmitTo") or "").strip()
-        prefill_hit_id = (request.args.get("hitId") or "").strip()
+        prefill_worker_id = normalize_mturk_value(request.args.get("workerId"), "anonymous_worker")
+        prefill_assignment_id = normalize_mturk_value(request.args.get("assignmentId"), "sandbox_assignment")
+        prefill_turk_submit_to = normalize_mturk_value(request.args.get("turkSubmitTo"), "")
+        prefill_hit_id = normalize_mturk_value(request.args.get("hitId"), "")
         preview_mode = (prefill_assignment_id == "ASSIGNMENT_ID_NOT_AVAILABLE")
         return render_template(
             "start.html",
@@ -254,11 +262,11 @@ def start():
     except ValueError:
         abort(400, "Invalid condition")
 
-    worker_id = (request.form.get("worker_id") or "anonymous_worker").strip()
-    assignment_id = (request.form.get("assignment_id") or "sandbox_assignment").strip()
+    worker_id = normalize_mturk_value(request.form.get("worker_id"), "anonymous_worker")
+    assignment_id = normalize_mturk_value(request.form.get("assignment_id"), "sandbox_assignment")
     order_label = (request.form.get("order_label") or "unknown").strip()
-    mturk_submit_to = (request.form.get("turk_submit_to") or "").strip()
-    hit_id = (request.form.get("hit_id") or "").strip()
+    mturk_submit_to = normalize_mturk_value(request.form.get("turk_submit_to"), "")
+    hit_id = normalize_mturk_value(request.form.get("hit_id"), "")
 
     participant_id = f"P-{uuid.uuid4().hex[:10]}"
 

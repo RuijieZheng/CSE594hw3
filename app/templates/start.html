@@ -2,8 +2,8 @@
 {% block content %}
 <section class="card">
   <h1>Start Session</h1>
-  <p>Fill this form before beginning.</p>
-  <p class="muted">Condition and MTurk details are prefilled when launched from Worker Sandbox.</p>
+  <p>Click begin to start the study.</p>
+  <p class="muted">Worker and MTurk metadata are captured automatically.</p>
   {% if preview_mode %}
     <p class="muted"><strong>Preview mode detected:</strong> accept the HIT first in MTurk Worker Sandbox before running the full study and submission flow.</p>
   {% endif %}
@@ -24,23 +24,12 @@
   </section>
 
   <form method="post" action="{{ url_for('start') }}" class="form-grid">
-    <label for="worker_id">Worker ID (or participant name)</label>
-    <input id="worker_id" name="worker_id" type="text" value="{{ prefill_worker_id }}" required>
-
-    <label for="assignment_id">Assignment ID</label>
-    <input id="assignment_id" name="assignment_id" type="text" value="{{ prefill_assignment_id }}" required>
-
+    <input id="worker_id" name="worker_id" type="hidden" value="{{ prefill_worker_id }}">
+    <input id="assignment_id" name="assignment_id" type="hidden" value="{{ prefill_assignment_id }}">
     <input id="turk_submit_to" name="turk_submit_to" type="hidden" value="{{ prefill_turk_submit_to }}">
     <input id="hit_id" name="hit_id" type="hidden" value="{{ prefill_hit_id }}">
-
-    <label for="order_label">Order Label (e.g., AI-first or baseline-first)</label>
-    <input id="order_label" name="order_label" type="text" value="unknown" required>
-
-    <label for="condition">Condition</label>
-    <select id="condition" name="condition" required>
-      <option value="baseline" {% if preselected_condition == 'baseline' %}selected{% endif %}>Without AI (Baseline)</option>
-      <option value="with_ai" {% if preselected_condition == 'with_ai' %}selected{% endif %}>With AI Assistance</option>
-    </select>
+    <input id="order_label" name="order_label" type="hidden" value="unknown">
+    <input id="condition" name="condition" type="hidden" value="{{ preselected_condition }}">
 
     <button class="button" type="submit">Begin Trials</button>
   </form>
@@ -48,32 +37,16 @@
 
 <script>
   (function () {
-    var conditionSelect = document.getElementById("condition");
     var panel = document.getElementById("conditionPanel");
     var symbol = document.getElementById("conditionSymbol");
     var title = document.getElementById("conditionTitle");
     var hint = document.getElementById("conditionHint");
 
-    if (!conditionSelect || !panel || !symbol || !title || !hint) {
+    if (!panel || !symbol || !title || !hint) {
       return;
     }
 
-    function renderCondition() {
-      var val = conditionSelect.value;
-      var isAi = val === "with_ai";
-
-      panel.classList.toggle("condition-ai", isAi);
-      panel.classList.toggle("condition-baseline", !isAi);
-
-      symbol.textContent = isAi ? "[AI]" : "[B]";
-      title.textContent = isAi ? "With AI Assistance" : "Baseline (Without AI)";
-      hint.textContent = isAi
-        ? "AI suggestion will be shown during each trial."
-        : "No AI suggestion will be shown during each trial.";
-    }
-
-    conditionSelect.addEventListener("change", renderCondition);
-    renderCondition();
+    // Condition display is fixed by route (/start/baseline or /start/with_ai).
   })();
 </script>
 {% endblock %}

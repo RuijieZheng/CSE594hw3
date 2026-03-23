@@ -22,7 +22,6 @@ DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 DISPLAY_TIMEZONE = os.environ.get("DISPLAY_TIMEZONE", "UTC")
-AUTO_EXPORT_ON_WRITE = os.environ.get("AUTO_EXPORT_ON_WRITE", "1") == "1"
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -240,8 +239,8 @@ def save_response(payload: dict) -> None:
     )
     conn.commit()
     conn.close()
-    if AUTO_EXPORT_ON_WRITE:
-        export_responses_csv()
+    # Always refresh export so CSV reflects latest submissions immediately.
+    export_responses_csv()
 
 
 def export_responses_csv() -> tuple[Path, int]:
@@ -487,8 +486,7 @@ def submit_trial():
         conn.commit()
         conn.close()
         log_event(participant_id, "session_completed")
-        if AUTO_EXPORT_ON_WRITE:
-            export_responses_csv()
+        export_responses_csv()
 
     return redirect(url_for("trial"))
 

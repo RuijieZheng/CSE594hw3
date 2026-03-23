@@ -12,17 +12,15 @@
   <p>Participant ID: <strong>{{ participant_id }}</strong></p>
   <p>Your survey code for MTurk submission:</p>
   <p class="survey-code">{{ survey_code }}</p>
+  <p class="muted">If MTurk does not show an automatic submit button, copy this code and paste it into the "Provide the survey code here" field on your MTurk page, then submit the HIT.</p>
 
-  {% if submit_action %}
-    <form method="post" action="{{ submit_action }}">
-      <input type="hidden" name="assignmentId" value="{{ assignment_id }}">
-      <input type="hidden" name="surveyCode" value="{{ survey_code }}">
-      <button class="button" type="submit">Submit to MTurk</button>
-    </form>
+  {% if submit_url %}
+    <a class="button" href="{{ submit_url }}">Submit to MTurk</a>
+    <p class="muted">If redirect fails, copy this submit URL into browser: <br><small>{{ submit_url }}</small></p>
   {% elif is_preview_assignment %}
     <p class="muted">This run used preview/local assignment ID. In real Worker Sandbox acceptance mode, this page will show a "Submit to MTurk" button automatically.</p>
   {% else %}
-    <p class="muted">MTurk submit endpoint not detected. If this was opened outside Worker Sandbox, copy the survey code into your HIT answer box.</p>
+    <p class="muted">MTurk submit endpoint not detected, so submit button is intentionally disabled. Open this task from an accepted Worker Sandbox HIT so turkSubmitTo and assignmentId are passed in.</p>
   {% endif %}
 
   <p>Thank you for participating.</p>

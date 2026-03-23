@@ -8,6 +8,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 from flask import Flask, abort, redirect, render_template, request, session, url_for
 
@@ -49,10 +50,15 @@ def init_db() -> None:
             started_at TEXT NOT NULL,
             completed_at TEXT,
             total_seconds REAL,
-            order_label TEXT
+            order_label TEXT,
+            survey_code TEXT
         )
         """
     )
+    # Backward-compatible schema migration for older DB files.
+    participant_columns = {row[1] for row in cur.execute("PRAGMA table_info(participants)").fetchall()}
+    if "survey_code" not in participant_columns:
+        cur.execute("ALTER TABLE participants ADD COLUMN survey_code TEXT")
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS responses (
@@ -141,14 +147,22 @@ def create_survey_code(length: int = 10) -> str:
     return "".join(random.choice(chars) for _ in range(length))
 
 
-def insert_participant(participant_id: str, worker_id: str, assignment_id: str, condition: str, n_trials: int, order_label: str) -> None:
+def insert_participant(
+    participant_id: str,
+    worker_id: str,
+    assignment_id: str,
+    condition: str,
+    n_trials: int,
+    order_label: str,
+    survey_code: str,
+) -> None:
     conn = get_db_conn()
     conn.execute(
         """
-        INSERT INTO participants (participant_id, worker_id, assignment_id, condition, n_trials, started_at, order_label)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO participants (participant_id, worker_id, assignment_id, condition, n_trials, started_at, order_label, survey_code)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (participant_id, worker_id, assignment_id, condition, n_trials, now_utc_iso(), order_label),
+        (participant_id, worker_id, assignment_id, condition, n_trials, now_utc_iso(), order_label, survey_code),
     )
     conn.commit()
     conn.close()
@@ -264,11 +278,12 @@ def start():
     session["trial_cursor"] = 0
     session["start_epoch"] = time.time()
     session["trial_start_epoch"] = time.time()
-    session["survey_code"] = create_survey_code()
+    survey_code = create_survey_code()
+    session["survey_code"] = survey_code
     session["mturk_submit_to"] = mturk_submit_to
     session["hit_id"] = hit_id
 
-    insert_participant(participant_id, worker_id, assignment_id, condition, n, order_label)
+    insert_participant(participant_id, worker_id, assignment_id, condition, n, order_label, survey_code)
     log_event(participant_id, "session_started", f"condition={condition};hit_id={hit_id}")
 
     return redirect(url_for("trial"))
@@ -396,19 +411,38 @@ def complete():
 
     survey_code = session.get("survey_code", "")
     assignment_id = session.get("assignment_id", "sandbox_assignment")
-    mturk_submit_to = (session.get("mturk_submit_to") or request.args.get("turkSubmitTo", "")).strip()
+    worker_id = session.get("worker_id", "")
+    hit_id = session.get("hit_id", "")
+    mturk_submit_to = (
+        session.get("mturk_submit_to")
+        or request.args.get("turkSubmitTo", "")
+        or request.args.get("turk_submit_to", "")
+    ).strip()
     is_preview_assignment = assignment_id in {"", "sandbox_assignment", "ASSIGNMENT_ID_NOT_AVAILABLE"}
 
     submit_action = ""
+    submit_url = ""
     if mturk_submit_to and not is_preview_assignment:
         submit_action = f"{mturk_submit_to.rstrip('/')}/mturk/externalSubmit"
+        submit_query = urlencode(
+            {
+                "assignmentId": assignment_id,
+                "workerId": worker_id,
+                "hitId": hit_id,
+                "surveyCode": survey_code,
+            }
+        )
+        submit_url = f"{submit_action}?{submit_query}"
 
     return render_template(
         "complete.html",
         participant_id=participant_id,
         survey_code=survey_code,
         assignment_id=assignment_id,
+        worker_id=worker_id,
+        hit_id=hit_id,
         submit_action=submit_action,
+        submit_url=submit_url,
         is_preview_assignment=is_preview_assignment,
         condition=session.get("condition", "baseline"),
         title="Study Complete",
@@ -425,7 +459,7 @@ def admin_export():
     conn = get_db_conn()
     rows = conn.execute(
         """
-        SELECT r.*, p.worker_id, p.assignment_id, p.started_at, p.completed_at, p.total_seconds, p.order_label
+        SELECT r.*, p.worker_id, p.assignment_id, p.survey_code, p.started_at, p.completed_at, p.total_seconds, p.order_label
         FROM responses r
         LEFT JOIN participants p ON p.participant_id = r.participant_id
         ORDER BY r.submitted_at ASC
@@ -436,7 +470,7 @@ def admin_export():
     columns = [
         "response_id", "participant_id", "trial_id", "trial_index", "condition", "prompt",
         "gold_answer", "ai_suggestion", "ai_visible", "response_text", "confidence", "correct",
-        "reaction_time_seconds", "submitted_at", "worker_id", "assignment_id", "started_at",
+        "reaction_time_seconds", "submitted_at", "worker_id", "assignment_id", "survey_code", "started_at",
         "completed_at", "total_seconds", "order_label"
     ]
 

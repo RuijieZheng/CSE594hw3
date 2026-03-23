@@ -76,6 +76,21 @@ Call endpoint in browser:
 
 This generates `data/responses_export.csv`.
 
+Notes:
+- `responses_export.csv` now includes both UTC and localized timestamp columns:
+	- `submitted_at` / `submitted_at_local`
+	- `started_at` / `started_at_local`
+	- `completed_at` / `completed_at_local`
+- Local timezone is controlled by env var `DISPLAY_TIMEZONE` (default `UTC`, e.g., set to `America/Los_Angeles` or `Asia/Shanghai`).
+- Export is refreshed automatically after each write by default (`AUTO_EXPORT_ON_WRITE=1`).
+
+### Verify manual survey codes
+Because MTurk manual-answer flow does not validate arbitrary codes automatically, verify codes server-side:
+
+`http://127.0.0.1:5000/admin/verify_code?token=YOUR_ADMIN_TOKEN&survey_code=CODE_FROM_MTURK`
+
+Returns whether the code exists and links to a recorded participant/session.
+
 ## 7) Run analysis for A3-2
 ```powershell
 python analysis/analyze.py --input data/responses_export.csv --outdir analysis/analysis_output

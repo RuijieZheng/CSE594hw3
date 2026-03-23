@@ -8,6 +8,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Flask, abort, redirect, render_template, request, session, url_for
 
@@ -19,6 +20,8 @@ TRIAL_CSV = DATA_DIR / "trials.csv"
 DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
+DISPLAY_TIMEZONE = os.environ.get("DISPLAY_TIMEZONE", "UTC")
+AUTO_EXPORT_ON_WRITE = os.environ.get("AUTO_EXPORT_ON_WRITE", "1") == "1"
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -26,6 +29,22 @@ app.secret_key = SECRET_KEY
 
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def to_local_iso(iso_text: str) -> str:
+    if not iso_text:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso_text)
+    except ValueError:
+        return iso_text
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    try:
+        target_tz = ZoneInfo(DISPLAY_TIMEZONE)
+    except Exception:
+        target_tz = timezone.utc
+    return dt.astimezone(target_tz).isoformat()
 
 
 def get_db_conn() -> sqlite3.Connection:
@@ -216,6 +235,63 @@ def save_response(payload: dict) -> None:
     )
     conn.commit()
     conn.close()
+    if AUTO_EXPORT_ON_WRITE:
+        export_responses_csv()
+
+
+def export_responses_csv() -> tuple[Path, int]:
+    out_csv = DATA_DIR / "responses_export.csv"
+    conn = get_db_conn()
+    rows = conn.execute(
+        """
+        SELECT r.*, p.worker_id, p.assignment_id, p.survey_code, p.started_at, p.completed_at, p.total_seconds, p.order_label
+        FROM responses r
+        LEFT JOIN participants p ON p.participant_id = r.participant_id
+        ORDER BY r.submitted_at ASC
+        """
+    ).fetchall()
+    conn.close()
+
+    columns = [
+        "response_id", "participant_id", "trial_id", "trial_index", "condition", "prompt",
+        "gold_answer", "ai_suggestion", "ai_visible", "response_text", "confidence", "correct",
+        "reaction_time_seconds", "submitted_at", "submitted_at_local", "worker_id", "assignment_id", "survey_code", "started_at",
+        "started_at_local", "completed_at", "completed_at_local", "total_seconds", "order_label"
+    ]
+
+    with open(out_csv, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(columns)
+        for row in rows:
+            writer.writerow(
+                [
+                    row["response_id"],
+                    row["participant_id"],
+                    row["trial_id"],
+                    row["trial_index"],
+                    row["condition"],
+                    row["prompt"],
+                    row["gold_answer"],
+                    row["ai_suggestion"],
+                    row["ai_visible"],
+                    row["response_text"],
+                    row["confidence"],
+                    row["correct"],
+                    row["reaction_time_seconds"],
+                    row["submitted_at"],
+                    to_local_iso(row["submitted_at"]),
+                    row["worker_id"],
+                    row["assignment_id"],
+                    row["survey_code"],
+                    row["started_at"],
+                    to_local_iso(row["started_at"]),
+                    row["completed_at"],
+                    to_local_iso(row["completed_at"]),
+                    row["total_seconds"],
+                    row["order_label"],
+                ]
+            )
+    return out_csv, len(rows)
 
 
 @app.route("/")
@@ -406,6 +482,8 @@ def submit_trial():
         conn.commit()
         conn.close()
         log_event(participant_id, "session_completed")
+        if AUTO_EXPORT_ON_WRITE:
+            export_responses_csv()
 
     return redirect(url_for("trial"))
 
@@ -444,35 +522,65 @@ def admin_export():
     if token != ADMIN_TOKEN:
         abort(403)
 
-    out_csv = DATA_DIR / "responses_export.csv"
-    conn = get_db_conn()
-    rows = conn.execute(
-        """
-        SELECT r.*, p.worker_id, p.assignment_id, p.survey_code, p.started_at, p.completed_at, p.total_seconds, p.order_label
-        FROM responses r
-        LEFT JOIN participants p ON p.participant_id = r.participant_id
-        ORDER BY r.submitted_at ASC
-        """
-    ).fetchall()
-    conn.close()
-
-    columns = [
-        "response_id", "participant_id", "trial_id", "trial_index", "condition", "prompt",
-        "gold_answer", "ai_suggestion", "ai_visible", "response_text", "confidence", "correct",
-        "reaction_time_seconds", "submitted_at", "worker_id", "assignment_id", "survey_code", "started_at",
-        "completed_at", "total_seconds", "order_label"
-    ]
-
-    with open(out_csv, "w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(columns)
-        for row in rows:
-            writer.writerow([row[col] for col in columns])
+    out_csv, n_rows = export_responses_csv()
 
     return {
         "status": "ok",
         "export_path": str(out_csv),
-        "rows": len(rows),
+        "rows": n_rows,
+        "display_timezone": DISPLAY_TIMEZONE,
+    }
+
+
+@app.route("/admin/verify_code")
+def admin_verify_code():
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        abort(403)
+
+    survey_code = (request.args.get("survey_code") or "").strip()
+    if not survey_code:
+        abort(400, "Missing survey_code")
+
+    conn = get_db_conn()
+    participant = conn.execute(
+        """
+        SELECT participant_id, worker_id, assignment_id, condition, started_at, completed_at, total_seconds
+        FROM participants
+        WHERE survey_code = ?
+        LIMIT 1
+        """,
+        (survey_code,),
+    ).fetchone()
+    response_count = 0
+    if participant:
+        response_count = conn.execute(
+            "SELECT COUNT(*) FROM responses WHERE participant_id = ?",
+            (participant["participant_id"],),
+        ).fetchone()[0]
+    conn.close()
+
+    if not participant:
+        return {
+            "status": "not_found",
+            "survey_code": survey_code,
+            "valid": False,
+        }
+
+    return {
+        "status": "ok",
+        "valid": True,
+        "survey_code": survey_code,
+        "participant_id": participant["participant_id"],
+        "worker_id": participant["worker_id"],
+        "assignment_id": participant["assignment_id"],
+        "condition": participant["condition"],
+        "started_at": participant["started_at"],
+        "completed_at": participant["completed_at"],
+        "started_at_local": to_local_iso(participant["started_at"]),
+        "completed_at_local": to_local_iso(participant["completed_at"]),
+        "total_seconds": participant["total_seconds"],
+        "response_count": response_count,
     }
 
 

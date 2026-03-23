@@ -13,6 +13,16 @@
     |
     <a href="{{ url_for('start_with_ai_link', workerId=prefill_worker_id, assignmentId=prefill_assignment_id, turkSubmitTo=prefill_turk_submit_to, hitId=prefill_hit_id) }}">With AI</a>
   </p>
+
+  <section id="conditionPanel" class="condition-panel {% if preselected_condition == 'with_ai' %}condition-ai{% else %}condition-baseline{% endif %}">
+    <p class="condition-kicker">Selected Study Condition</p>
+    <div class="condition-row">
+      <span id="conditionSymbol" class="condition-symbol">{% if preselected_condition == 'with_ai' %}[AI]{% else %}[B]{% endif %}</span>
+      <strong id="conditionTitle">{% if preselected_condition == 'with_ai' %}With AI Assistance{% else %}Baseline (Without AI){% endif %}</strong>
+    </div>
+    <p id="conditionHint" class="condition-hint">{% if preselected_condition == 'with_ai' %}AI suggestion will be shown during each trial.{% else %}No AI suggestion will be shown during each trial.{% endif %}</p>
+  </section>
+
   <form method="post" action="{{ url_for('start') }}" class="form-grid">
     <label for="worker_id">Worker ID (or participant name)</label>
     <input id="worker_id" name="worker_id" type="text" value="{{ prefill_worker_id }}" required>
@@ -35,4 +45,35 @@
     <button class="button" type="submit">Begin Trials</button>
   </form>
 </section>
+
+<script>
+  (function () {
+    var conditionSelect = document.getElementById("condition");
+    var panel = document.getElementById("conditionPanel");
+    var symbol = document.getElementById("conditionSymbol");
+    var title = document.getElementById("conditionTitle");
+    var hint = document.getElementById("conditionHint");
+
+    if (!conditionSelect || !panel || !symbol || !title || !hint) {
+      return;
+    }
+
+    function renderCondition() {
+      var val = conditionSelect.value;
+      var isAi = val === "with_ai";
+
+      panel.classList.toggle("condition-ai", isAi);
+      panel.classList.toggle("condition-baseline", !isAi);
+
+      symbol.textContent = isAi ? "[AI]" : "[B]";
+      title.textContent = isAi ? "With AI Assistance" : "Baseline (Without AI)";
+      hint.textContent = isAi
+        ? "AI suggestion will be shown during each trial."
+        : "No AI suggestion will be shown during each trial.";
+    }
+
+    conditionSelect.addEventListener("change", renderCondition);
+    renderCondition();
+  })();
+</script>
 {% endblock %}

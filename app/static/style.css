@@ -42,6 +42,54 @@ body {
   font-size: 14px;
 }
 
+.condition-panel {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  margin: 12px 0 4px;
+}
+
+.condition-kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.condition-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.condition-symbol {
+  display: inline-block;
+  min-width: 42px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  font-weight: 800;
+  text-align: center;
+}
+
+.condition-hint {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.condition-panel.condition-baseline {
+  background: #eef6ff;
+  color: #244f82;
+  border-color: #bfd8f2;
+}
+
+.condition-panel.condition-ai {
+  background: #f3ffeb;
+  color: #2c6e1e;
+  border-color: #c8e9bd;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -180,5 +228,11 @@ select {
 @media (max-width: 640px) {
   .study-headline h1 {
     font-size: 24px;
+  }
+
+  .condition-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
   }
 }

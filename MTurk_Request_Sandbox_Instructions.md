@@ -7,7 +7,6 @@ Your task interface must be accessible via a public URL so MTurk workers can ope
 ### Option A (quick test only): use a tunneling service
 - Run your app locally:
   ```powershell
-  cd a3_submission
   .\.venv\Scripts\python.exe app/app.py
   ```
 - Use a tunnel service (e.g., ngrok) to expose `http://localhost:5000` publicly.
@@ -29,14 +28,14 @@ Deploy this repository to Render so your classmates can open a stable URL withou
 3. Select your repository and deploy from `render.yaml`.
 4. Wait for build to finish and copy the generated URL, e.g. `https://your-app.onrender.com`.
 5. Verify these endpoints are reachable:
-   - `https://your-app.onrender.com/start/baseline`
-   - `https://your-app.onrender.com/start/with_ai`
+  - `https://your-app.onrender.com/mturk/baseline`
+  - `https://your-app.onrender.com/mturk/with_ai`
 
 Repository is already prepared for Render with:
-- `a3_submission/render.yaml`
-- `a3_submission/Procfile`
-- `a3_submission/wsgi.py`
-- `a3_submission/requirements.txt` (includes `gunicorn`)
+- `render.yaml`
+- `Procfile`
+- `wsgi.py`
+- `requirements.txt` (includes `gunicorn`)
 
 ---
 
@@ -58,8 +57,8 @@ Repository is already prepared for Render with:
 Use the following HTML as the **External Question** in the MTurk task setup.
 
 Replace `YOUR_PUBLIC_URL` with the public URL of your deployed task. For example:
-- baseline:  `https://your-app.onrender.com/start/baseline`
-- with AI:  `https://your-app.onrender.com/start/with_ai`
+- baseline:  `https://your-app.onrender.com/mturk/baseline`
+- with AI:  `https://your-app.onrender.com/mturk/with_ai`
 
 ```html
 <html>
@@ -79,8 +78,8 @@ Replace `YOUR_PUBLIC_URL` with the public URL of your deployed task. For example
     <div class="box">
       <p><strong>Step 1:</strong> Choose the correct link below and complete all trials.</p>
       <p>
-        <a class="button" href="YOUR_PUBLIC_URL/start/baseline" target="_blank">Without AI (Baseline)</a>
-        <a class="button" href="YOUR_PUBLIC_URL/start/with_ai" target="_blank">With AI Assistance</a>
+        <a class="button" href="YOUR_PUBLIC_URL/mturk/baseline" target="_blank">Without AI (Baseline)</a>
+        <a class="button" href="YOUR_PUBLIC_URL/mturk/with_ai" target="_blank">With AI Assistance</a>
       </p>
       <p class="warning">IMPORTANT:</p>
       <ul>

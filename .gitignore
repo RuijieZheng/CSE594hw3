@@ -5,8 +5,6 @@ __pycache__/
 
 # Virtual environments
 .venv/
-a3_submission/.venv/
-a3_submission/
 
 # Runtime artifacts
 *.log

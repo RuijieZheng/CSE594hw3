@@ -8,7 +8,6 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
 
 from flask import Flask, abort, redirect, render_template, request, session, url_for
 
@@ -420,29 +419,11 @@ def complete():
     ).strip()
     is_preview_assignment = assignment_id in {"", "sandbox_assignment", "ASSIGNMENT_ID_NOT_AVAILABLE"}
 
-    submit_action = ""
-    submit_url = ""
-    if mturk_submit_to and not is_preview_assignment:
-        submit_action = f"{mturk_submit_to.rstrip('/')}/mturk/externalSubmit"
-        submit_query = urlencode(
-            {
-                "assignmentId": assignment_id,
-                "workerId": worker_id,
-                "hitId": hit_id,
-                "surveyCode": survey_code,
-            }
-        )
-        submit_url = f"{submit_action}?{submit_query}"
-
     return render_template(
         "complete.html",
         participant_id=participant_id,
         survey_code=survey_code,
         assignment_id=assignment_id,
-        worker_id=worker_id,
-        hit_id=hit_id,
-        submit_action=submit_action,
-        submit_url=submit_url,
         is_preview_assignment=is_preview_assignment,
         condition=session.get("condition", "baseline"),
         title="Study Complete",

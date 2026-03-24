@@ -54,6 +54,16 @@ python app/app.py
 校验 survey code：
 `http://127.0.0.1:5000/admin/verify_code?token=YOUR_ADMIN_TOKEN&survey_code=CODE_FROM_MTURK`
 
+按 MTurk 提交信息做严格核验（推荐审核时使用）：
+`http://127.0.0.1:5000/admin/check_submission?token=YOUR_ADMIN_TOKEN&survey_code=CODE_FROM_MTURK&assignment_id=ASSIGNMENT_ID_FROM_MTURK`
+
+如果你也有 workerId，可进一步校验：
+`http://127.0.0.1:5000/admin/check_submission?token=YOUR_ADMIN_TOKEN&survey_code=CODE_FROM_MTURK&assignment_id=ASSIGNMENT_ID_FROM_MTURK&worker_id=WORKER_ID_FROM_MTURK`
+
+审核建议：
+- 返回 `valid=true`：可批准。
+- 返回 `valid=false`：通常为乱填 code、assignment 不匹配或未完成全部 trial，可拒绝并备注原因。
+
 清空全部实验数据（仅用于 Sandbox 重测）：
 ```powershell
 Invoke-WebRequest -Method Post "http://127.0.0.1:5000/admin/reset?token=YOUR_ADMIN_TOKEN&confirm=RESET"

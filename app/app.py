@@ -16,7 +16,8 @@ REPO_DATA_DIR = ROOT / "data"
 RUNTIME_DATA_DIR = Path(os.environ.get("RUNTIME_DATA_DIR", str(REPO_DATA_DIR)))
 DB_PATH = Path(os.environ.get("DB_PATH", str(RUNTIME_DATA_DIR / "study.db")))
 EXPORT_CSV_PATH = Path(os.environ.get("EXPORT_CSV_PATH", str(RUNTIME_DATA_DIR / "responses_export.csv")))
-TRIAL_CSV = Path(os.environ.get("TRIALS_CSV_PATH", str(REPO_DATA_DIR / "trials.csv")))
+TRIALS_BASELINE_CSV = Path(os.environ.get("TRIALS_BASELINE_CSV_PATH", str(REPO_DATA_DIR / "trials_baseline.csv")))
+TRIALS_WITH_AI_CSV = Path(os.environ.get("TRIALS_WITH_AI_CSV_PATH", str(REPO_DATA_DIR / "trials_with_ai.csv")))
 
 DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
@@ -54,33 +55,7 @@ def get_db_conn() -> sqlite3.Connection:
     return conn
 
 
-def ensure_writable_runtime_paths() -> None:
-    global RUNTIME_DATA_DIR, DB_PATH, EXPORT_CSV_PATH
-
-    candidates = [
-        RUNTIME_DATA_DIR,
-        REPO_DATA_DIR,
-        Path("/tmp/cse594hw3"),
-    ]
-
-    for candidate in candidates:
-        try:
-            candidate.mkdir(parents=True, exist_ok=True)
-            probe = candidate / ".write_probe"
-            probe.write_text("ok", encoding="utf-8")
-            probe.unlink(missing_ok=True)
-            RUNTIME_DATA_DIR = candidate
-            DB_PATH = candidate / "study.db"
-            EXPORT_CSV_PATH = candidate / "responses_export.csv"
-            return
-        except Exception:
-            continue
-
-    raise RuntimeError("No writable runtime data directory available")
-
-
 def init_db() -> None:
-    ensure_writable_runtime_paths()
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     EXPORT_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db_conn()
@@ -141,17 +116,24 @@ def init_db() -> None:
     conn.close()
 
 
-def load_trials() -> list[dict]:
-    if not TRIAL_CSV.exists():
-        raise FileNotFoundError(f"Missing trials file: {TRIAL_CSV}")
+def load_trials(condition: str) -> list[dict]:
+    if condition == "baseline":
+        trial_csv = TRIALS_BASELINE_CSV
+    elif condition == "with_ai":
+        trial_csv = TRIALS_WITH_AI_CSV
+    else:
+        raise ValueError(f"Unknown condition: {condition}")
+
+    if not trial_csv.exists():
+        raise FileNotFoundError(f"Missing trials file: {trial_csv}")
 
     trials = []
-    with open(TRIAL_CSV, "r", encoding="utf-8", newline="") as f:
+    with open(trial_csv, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         required = {"trial_id", "prompt", "gold_answer", "ai_suggestion"}
         missing = required - set(reader.fieldnames or [])
         if missing:
-            raise ValueError(f"trials.csv missing required columns: {sorted(missing)}")
+            raise ValueError(f"{trial_csv.name} missing required columns: {sorted(missing)}")
 
         for row in reader:
             trials.append(
@@ -165,7 +147,7 @@ def load_trials() -> list[dict]:
             )
 
     if not trials:
-        raise ValueError("trials.csv has no rows")
+        raise ValueError(f"{trial_csv.name} has no rows")
     return trials
 
 
@@ -391,7 +373,7 @@ def start():
 
     participant_id = f"P-{uuid.uuid4().hex[:10]}"
 
-    trials = load_trials()
+    trials = load_trials(condition)
     n = min(DEFAULT_TRIALS_PER_PARTICIPANT, len(trials))
     sampled_trials = stable_sample(trials, participant_id, n)
 
@@ -622,13 +604,10 @@ def admin_verify_code():
     if not survey_code:
         abort(400, "Missing survey_code")
 
-    provided_assignment_id = (request.args.get("assignment_id") or "").strip()
-    provided_worker_id = (request.args.get("worker_id") or "").strip()
-
     conn = get_db_conn()
     participant = conn.execute(
         """
-        SELECT participant_id, worker_id, assignment_id, condition, n_trials, started_at, completed_at, total_seconds
+        SELECT participant_id, worker_id, assignment_id, condition, started_at, completed_at, total_seconds
         FROM participants
         WHERE survey_code = ?
         LIMIT 1
@@ -650,99 +629,20 @@ def admin_verify_code():
             "valid": False,
         }
 
-    is_assignment_match = True
-    is_worker_match = True
-    if provided_assignment_id:
-        is_assignment_match = (participant["assignment_id"] == provided_assignment_id)
-    if provided_worker_id:
-        is_worker_match = (participant["worker_id"] == provided_worker_id)
-
-    completed_trials = response_count
-    expected_trials = int(participant["n_trials"] or 0)
-    is_complete = completed_trials >= expected_trials and expected_trials > 0
-    is_strict_valid = is_assignment_match and is_worker_match and is_complete
-
     return {
         "status": "ok",
         "valid": True,
-        "strict_valid": is_strict_valid,
         "survey_code": survey_code,
         "participant_id": participant["participant_id"],
         "worker_id": participant["worker_id"],
         "assignment_id": participant["assignment_id"],
         "condition": participant["condition"],
-        "n_trials": expected_trials,
-        "completed_trials": completed_trials,
-        "is_complete": is_complete,
-        "assignment_match": is_assignment_match,
-        "worker_match": is_worker_match,
         "started_at": participant["started_at"],
         "completed_at": participant["completed_at"],
         "started_at_local": to_local_iso(participant["started_at"]),
         "completed_at_local": to_local_iso(participant["completed_at"]),
         "total_seconds": participant["total_seconds"],
         "response_count": response_count,
-    }
-
-
-@app.route("/admin/check_submission")
-def admin_check_submission():
-    token = request.args.get("token", "")
-    if token != ADMIN_TOKEN:
-        abort(403)
-
-    survey_code = (request.args.get("survey_code") or "").strip()
-    assignment_id = (request.args.get("assignment_id") or "").strip()
-    worker_id = (request.args.get("worker_id") or "").strip()
-    if not survey_code or not assignment_id:
-        abort(400, "Missing survey_code or assignment_id")
-
-    conn = get_db_conn()
-    participant = conn.execute(
-        """
-        SELECT participant_id, worker_id, assignment_id, n_trials, completed_at
-        FROM participants
-        WHERE survey_code = ?
-        LIMIT 1
-        """,
-        (survey_code,),
-    ).fetchone()
-    if participant:
-        response_count = conn.execute(
-            "SELECT COUNT(*) FROM responses WHERE participant_id = ?",
-            (participant["participant_id"],),
-        ).fetchone()[0]
-    else:
-        response_count = 0
-    conn.close()
-
-    if not participant:
-        return {
-            "status": "not_found",
-            "valid": False,
-            "reason": "survey_code_not_found",
-        }
-
-    assignment_match = participant["assignment_id"] == assignment_id
-    worker_match = True if not worker_id else participant["worker_id"] == worker_id
-    expected_trials = int(participant["n_trials"] or 0)
-    complete_match = response_count >= expected_trials and expected_trials > 0
-    strict_valid = assignment_match and worker_match and complete_match
-
-    return {
-        "status": "ok",
-        "valid": strict_valid,
-        "survey_code": survey_code,
-        "assignment_id": assignment_id,
-        "participant_assignment_id": participant["assignment_id"],
-        "participant_id": participant["participant_id"],
-        "participant_worker_id": participant["worker_id"],
-        "assignment_match": assignment_match,
-        "worker_match": worker_match,
-        "complete_match": complete_match,
-        "completed_trials": response_count,
-        "expected_trials": expected_trials,
-        "reason": "ok" if strict_valid else "mismatch_or_incomplete",
     }
 
 

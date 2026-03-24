@@ -33,14 +33,15 @@ def get_writable_dir(preferred_dirs):
 RUNTIME_DATA_DIR = get_writable_dir(["/var/data", str(ROOT / "data")])
 DB_PATH = Path(os.environ.get("DB_PATH", str(RUNTIME_DATA_DIR / "study.db")))
 EXPORT_CSV_PATH = Path(os.environ.get("EXPORT_CSV_PATH", str(RUNTIME_DATA_DIR / "responses_export.csv")))
-TRIALS_BASELINE_CSV = Path(os.environ.get("TRIALS_BASELINE_CSV_PATH", str(REPO_DATA_DIR / "trials_baseline.csv")))
-TRIALS_WITH_AI_CSV = Path(os.environ.get("TRIALS_WITH_AI_CSV_PATH", str(REPO_DATA_DIR / "trials_with_ai.csv")))
 
-DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6"))
+# 只依赖 ADMIN_TOKEN 和 FLASK_SECRET_KEY，其他全部写死
+TRIALS_BASELINE_CSV = REPO_DATA_DIR / "trials_baseline.csv"
+TRIALS_WITH_AI_CSV = REPO_DATA_DIR / "trials_with_ai.csv"
+DEFAULT_TRIALS_PER_PARTICIPANT = 20
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
-DISPLAY_TIMEZONE = os.environ.get("DISPLAY_TIMEZONE", "UTC")
-REQUIRE_REAL_MTURK = os.environ.get("REQUIRE_REAL_MTURK", "0") == "1"
+DISPLAY_TIMEZONE = "UTC"
+REQUIRE_REAL_MTURK = False
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY

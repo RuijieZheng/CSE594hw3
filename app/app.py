@@ -12,8 +12,25 @@ from zoneinfo import ZoneInfo
 from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO_DATA_DIR = ROOT / "data"
-RUNTIME_DATA_DIR = Path(os.environ.get("RUNTIME_DATA_DIR", str(REPO_DATA_DIR)))
+# ==== Render/本地数据目录自动fallback修复 ====
+import tempfile
+
+def get_writable_dir(preferred_dirs):
+    for d in preferred_dirs:
+        try:
+            Path(d).mkdir(parents=True, exist_ok=True)
+            testfile = Path(d) / (".test_write" + str(os.getpid()))
+            with open(testfile, "w") as f:
+                f.write("ok")
+            testfile.unlink()
+            return Path(d)
+        except Exception:
+            continue
+    # fallback to system temp
+    return Path(tempfile.gettempdir())
+
+# 优先顺序：/var/data -> ./data -> /tmp
+RUNTIME_DATA_DIR = get_writable_dir(["/var/data", str(ROOT / "data")])
 DB_PATH = Path(os.environ.get("DB_PATH", str(RUNTIME_DATA_DIR / "study.db")))
 EXPORT_CSV_PATH = Path(os.environ.get("EXPORT_CSV_PATH", str(RUNTIME_DATA_DIR / "responses_export.csv")))
 TRIALS_BASELINE_CSV = Path(os.environ.get("TRIALS_BASELINE_CSV_PATH", str(REPO_DATA_DIR / "trials_baseline.csv")))

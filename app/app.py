@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
 
+
+# 路径变量顺序修正，确保 REPO_DATA_DIR 一定被定义
 ROOT = Path(__file__).resolve().parents[1]
 # ==== Render/本地数据目录自动fallback修复 ====
 import tempfile

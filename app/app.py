@@ -448,7 +448,7 @@ def trial():
         return redirect(url_for("complete"))
 
     trial_ids = session.get("trial_ids", [])
-    trial_lookup = {t["trial_id"]: t for t in load_trials()}
+    trial_lookup = {t["trial_id"]: t for t in load_trials(condition)}
     trial_obj = trial_lookup.get(trial_ids[trial_cursor])
     if not trial_obj:
         abort(500, "Trial missing from dataset")
@@ -486,7 +486,7 @@ def submit_trial():
     confidence = int(confidence_raw) if confidence_raw.isdigit() else None
 
     trial_ids = session.get("trial_ids", [])
-    trial_lookup = {t["trial_id"]: t for t in load_trials()}
+    trial_lookup = {t["trial_id"]: t for t in load_trials(condition)}
     trial_obj = trial_lookup.get(trial_ids[trial_cursor])
     if not trial_obj:
         abort(500, "Trial missing from dataset")

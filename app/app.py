@@ -54,7 +54,33 @@ def get_db_conn() -> sqlite3.Connection:
     return conn
 
 
+def ensure_writable_runtime_paths() -> None:
+    global RUNTIME_DATA_DIR, DB_PATH, EXPORT_CSV_PATH
+
+    candidates = [
+        RUNTIME_DATA_DIR,
+        REPO_DATA_DIR,
+        Path("/tmp/cse594hw3"),
+    ]
+
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            probe = candidate / ".write_probe"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            RUNTIME_DATA_DIR = candidate
+            DB_PATH = candidate / "study.db"
+            EXPORT_CSV_PATH = candidate / "responses_export.csv"
+            return
+        except Exception:
+            continue
+
+    raise RuntimeError("No writable runtime data directory available")
+
+
 def init_db() -> None:
+    ensure_writable_runtime_paths()
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     EXPORT_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db_conn()

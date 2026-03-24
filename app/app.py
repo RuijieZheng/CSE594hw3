@@ -22,6 +22,7 @@ DEFAULT_TRIALS_PER_PARTICIPANT = int(os.environ.get("TRIALS_PER_PARTICIPANT", "6
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "change-me-before-deploy")
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 DISPLAY_TIMEZONE = os.environ.get("DISPLAY_TIMEZONE", "UTC")
+REQUIRE_REAL_MTURK = os.environ.get("REQUIRE_REAL_MTURK", "0") == "1"
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -167,6 +168,17 @@ def normalize_mturk_value(value: str, default: str = "") -> str:
     if cleaned.startswith("${") and cleaned.endswith("}"):
         return default
     return cleaned or default
+
+
+def is_real_mturk_assignment(assignment_id: str, worker_id: str, turk_submit_to: str) -> bool:
+    bad_assignment_ids = {"", "sandbox_assignment", "ASSIGNMENT_ID_NOT_AVAILABLE"}
+    if assignment_id in bad_assignment_ids:
+        return False
+    if not worker_id or worker_id == "anonymous_worker":
+        return False
+    if not turk_submit_to:
+        return False
+    return True
 
 
 def create_survey_code(worker_id: str, assignment_id: str, condition: str, participant_id: str) -> str:
@@ -347,6 +359,9 @@ def start():
     order_label = (request.form.get("order_label") or "unknown").strip()
     mturk_submit_to = normalize_mturk_value(request.form.get("turk_submit_to"), "")
     hit_id = normalize_mturk_value(request.form.get("hit_id"), "")
+
+    if REQUIRE_REAL_MTURK and not is_real_mturk_assignment(assignment_id, worker_id, mturk_submit_to):
+        abort(400, "This study must be launched from an accepted MTurk HIT.")
 
     participant_id = f"P-{uuid.uuid4().hex[:10]}"
 
@@ -543,6 +558,32 @@ def admin_export_csv():
 
     out_csv, _ = export_responses_csv()
     return send_file(out_csv, mimetype="text/csv", as_attachment=True, download_name="responses_export.csv")
+
+
+@app.route("/admin/reset", methods=["POST"])
+def admin_reset():
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        abort(403)
+
+    confirm = (request.args.get("confirm") or request.form.get("confirm") or "").strip()
+    if confirm != "RESET":
+        abort(400, "Missing confirm=RESET")
+
+    conn = get_db_conn()
+    conn.execute("DELETE FROM responses")
+    conn.execute("DELETE FROM participants")
+    conn.execute("DELETE FROM sessions_audit")
+    conn.commit()
+    conn.close()
+
+    out_csv, n_rows = export_responses_csv()
+    return {
+        "status": "ok",
+        "message": "All study records cleared",
+        "rows": n_rows,
+        "export_path": str(out_csv),
+    }
 
 
 @app.route("/admin/verify_code")
